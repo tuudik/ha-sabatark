@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from copy import deepcopy
 from typing import Any
 
@@ -11,22 +12,34 @@ from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
 
 from sabatark import Device
 
-from .hub import SabatarkConfigEntry
+from .hub import SabatarkConfigEntry, SabatarkHub
 
 
 def access_options(entry: SabatarkConfigEntry, device_id: int) -> dict[str, Any]:
-    """Return the configured access model with lock defaults."""
-    return {
-        "model": "lock",
-        "paths": ["status.locked"],
-        **entry.options.get("access", {}).get(str(device_id), {}),
+    """Return the stored access model, or defaults derived from the device's declared controls."""
+    stored = entry.options.get("access", {}).get(str(device_id))
+    if stored:
+        return {"model": "lock", "paths": ["status.locked"], **stored}
+    return access_defaults(getattr(entry, "runtime_data", None), device_id)
+
+
+def access_defaults(hub: SabatarkHub | None, device_id: int) -> dict[str, Any]:
+    """Return the default access model: buttons for 2+ declared buttons, otherwise a lock."""
+    buttons = hub.controls(device_id).buttons if hub is not None else []
+    options: dict[str, Any] = {
+        "model": "buttons" if len(buttons) > 1 else "lock",
+        "paths": buttons or ["status.locked"],
     }
+    device = hub.devices.get(device_id) if hub is not None else None
+    if device is not None and "open" in device.status:
+        options.update(state_device=device_id, state_path="status.open")
+    return options
 
 
-def output_paths(device: Device) -> list[str]:
-    """Return boolean access output paths."""
+def output_paths(device: Device, declared: Iterable[str] = ()) -> list[str]:
+    """Return boolean access output paths, including the declared action buttons."""
     return sorted(
-        {"status.locked"}
+        {"status.locked", *declared}
         | {
             f"status.{key}"
             for key, value in device.status.items()
@@ -109,7 +122,8 @@ class SabatarkOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Choose the output paths exposed as pulse buttons."""
-        paths = output_paths(self.config_entry.runtime_data.devices[self._device_id])
+        hub = self.config_entry.runtime_data
+        paths = output_paths(hub.devices[self._device_id], hub.controls(self._device_id).buttons)
         errors = {}
         if user_input is not None:
             if user_input["paths"]:
@@ -142,7 +156,7 @@ class SabatarkOptionsFlow(OptionsFlowWithReload):
                 "state_path": self._access.get("state_path", ""),
             }
             return await self.async_step_state()
-        paths = output_paths(hub.devices[self._device_id])
+        paths = output_paths(hub.devices[self._device_id], hub.controls(self._device_id).buttons)
         sensor_ids = {device.id for device in sensors}
         current_sensor = self._access.get("state_device")
         return self.async_show_form(

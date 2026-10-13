@@ -28,6 +28,7 @@ from sabatark import (
 )
 
 from .const import DOMAIN, MANUFACTURER, RECONNECT_INITIAL, RECONNECT_MAX
+from .controls import Controls, parse_controls
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ class SabatarkHub:
             if device.site_id == site.id and is_logical(device)
         }
         self.rooms: dict[int, Room] = {room.id: room for room in rooms if room.site_id == site.id}
+        self.templates: dict[int, Device] = {device.id: device for device in devices}
         self.connected = True
         self.hub_device_id: str | None = None
         self._device_listeners: dict[int, list[DeviceListener]] = {}
@@ -116,6 +118,13 @@ class SabatarkHub:
         """Return whether the hub is connected and the device does not report itself offline."""
         device = self.devices.get(device_id)
         return self.connected and device is not None and device.status.get("online") is not False
+
+    def controls(self, device_id: int) -> Controls:
+        """Return the controls declared in a device's ui."""
+        device = self.devices.get(device_id) or self.templates.get(device_id)
+        if device is None:
+            return Controls()
+        return parse_controls(device, self.templates)
 
     @callback
     def async_subscribe_device(self, device_id: int, listener: DeviceListener) -> CALLBACK_TYPE:
@@ -192,6 +201,7 @@ class SabatarkHub:
     @callback
     def _async_refresh(self, devices: list[Device]) -> None:
         for device in devices:
+            self.templates[device.id] = device
             if device.id in self.devices:
                 self.devices[device.id] = device
         self.connected = True

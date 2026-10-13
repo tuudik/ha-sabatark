@@ -23,7 +23,7 @@ Hardware modules and bus drivers get no entities.
 
 | Controller device | Entity |
 |---|---|
-| Light outputs (`light`, `outputPwm`, or outputs with light usage) | `light` (on/off) |
+| Light outputs (`light`, `outputPwm`, or outputs with light usage) | `light` (on/off, brightness for dimmers) |
 | Other outputs | `switch` |
 | Motion detectors | `binary_sensor` (motion) |
 | Door and window contacts | `binary_sensor` (door, window or opening) |
@@ -33,12 +33,15 @@ Hardware modules and bus drivers get no entities.
 | Temperature, humidity, CO2, illuminance, voltage, current | `sensor` |
 | Other numeric status values | `sensor`, disabled by default |
 
+On/off and brightness controls follow the controls each device declares in the controller's user interface.
+Access devices with two or more declared open buttons default to pulse buttons, others to a lock; integration options
+override the default.
+
 A device that reports itself offline, or a lost connection to the controller, makes its entities unavailable.
 
 ## Limitations
 
-- Dimmable outputs are switched on and off only; brightness is not controlled yet.
-- Wall-switch gestures, access devices (locks, gates), blinds, ventilation and the sauna are not supported yet.
+- Blinds, ventilation and the sauna are not supported yet.
 
 ## Development
 

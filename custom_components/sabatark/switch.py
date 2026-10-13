@@ -8,7 +8,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .entity import SabatarkEntity
+from .entity import SabatarkOnOffEntity
 from .hub import SabatarkConfigEntry
 from .light import is_light
 
@@ -27,18 +27,13 @@ async def async_setup_entry(
     )
 
 
-class SabatarkSwitch(SabatarkEntity, SwitchEntity):
+class SabatarkSwitch(SabatarkOnOffEntity, SwitchEntity):
     """A relay output."""
 
     _attr_name = None
 
-    @property
-    def is_on(self) -> bool | None:
-        value = self.device.status.get("output")
-        return value if isinstance(value, bool) else None
-
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await self.hub.async_set_output(self.device_id, True)
+        await self._async_write_onoff(True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.hub.async_set_output(self.device_id, False)
+        await self._async_write_onoff(False)
