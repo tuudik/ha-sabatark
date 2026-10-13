@@ -50,7 +50,8 @@ jobs:
             source=sibling
           else
             source=none
-            echo "::notice::Skipping pytest: $requirement is not on PyPI and the python-sabatark repository is not public yet"
+            echo "Skipping pytest: $requirement is not on PyPI and the python-sabatark repository is not public yet" \
+              | tee -a "$GITHUB_STEP_SUMMARY"
           fi
           {
             echo "requirement=$requirement"
