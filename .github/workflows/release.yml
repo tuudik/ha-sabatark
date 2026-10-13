@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Verify the tag and published library requirement
+        id: check
+        run: python scripts/release.py check --tag "$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+
+  validate:
+    needs: preflight
+    permissions:
+      contents: read
+    uses: ./.github/workflows/validate.yml
+
+  release:
+    needs: [preflight, validate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Build and verify the HACS archive
+        run: python scripts/release.py build --output build/sabatark.zip
+      - name: Extract the changelog notes for this version
+        env:
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+        run: python scripts/release.py notes --version "$RELEASE_VERSION" --output build/release-notes.md
+      - name: Publish the GitHub Release with its archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/sabatark.zip --verify-tag --title "Sabatark $GITHUB_REF_NAME" --notes-file build/release-notes.md
