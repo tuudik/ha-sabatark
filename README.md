@@ -45,6 +45,8 @@ A device that reports itself offline, or a lost connection to the controller, ma
 
 ## Development
 
+Development and tests use Python 3.14.2 or later, as Home Assistant requires, and [uv](https://docs.astral.sh/uv/).
+
 ```sh
 uv sync
 uv run pytest -q

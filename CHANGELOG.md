@@ -11,5 +11,6 @@
 - Model access devices as locks, garage covers or output pulse buttons through integration options.
 - Provide redacted diagnostics and original integration icons.
 - Package `sabatark.zip` for HACS and manual installation on Home Assistant OS.
+- Require Home Assistant 2026.10.0 or later (Python 3.14).
 
 Alarm panels, blinds, ventilation and sauna controls are not included.

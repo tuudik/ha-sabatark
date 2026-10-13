@@ -2,6 +2,7 @@ name: Validate
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
   workflow_call:
@@ -13,13 +14,14 @@ jobs:
   hassfest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: home-assistant/actions/hassfest@master
 
   hacs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - uses: hacs/action@main
         with:
           category: integration
@@ -30,44 +32,57 @@ jobs:
       run:
         working-directory: ha-sabatark
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: ha-sabatark
-      - uses: actions/setup-python@v5
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           python-version: '3.14'
-      - name: Install the library pin from the manifest when published
+          working-directory: ha-sabatark
+          activate-environment: true
+          enable-cache: true
+      - name: Install the pinned test tooling from the dev dependency group
+        run: |
+          python - <<'PY' > "$RUNNER_TEMP/requirements-dev.txt"
+          import tomllib
+          group = tomllib.load(open('pyproject.toml', 'rb'))['dependency-groups']['dev']
+          print('\n'.join(requirement for requirement in group if requirement != 'sabatark'))
+          PY
+          uv pip install --requirement "$RUNNER_TEMP/requirements-dev.txt"
+      - name: Look up the manifest's library release on PyPI
         id: library
         run: |
-          python - <<'PY'
-          import json
-          import os
-          import subprocess
-          import sys
-          requirement = json.load(open('custom_components/sabatark/manifest.json'))['requirements'][0]
-          result = subprocess.run([sys.executable, '-m', 'pip', 'install', requirement])
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write(f'available={str(result.returncode == 0).lower()}\n')
-          PY
-      - name: Check out sibling library before its first PyPI release
-        if: steps.library.outputs.available == 'false'
-        uses: actions/checkout@v4
+          requirement=$(jq -r '.requirements[0]' custom_components/sabatark/manifest.json)
+          version=${requirement#sabatark==}
+          if curl --fail --silent --show-error --output /dev/null "https://pypi.org/pypi/sabatark/$version/json"; then
+            published=true
+          else
+            published=false
+          fi
+          {
+            echo "requirement=$requirement"
+            echo "published=$published"
+          } >> "$GITHUB_OUTPUT"
+      - name: Install the library from PyPI
+        if: steps.library.outputs.published == 'true'
+        env:
+          REQUIREMENT: ${{ steps.library.outputs.requirement }}
+        run: uv pip install "$REQUIREMENT"
+      - name: Check out the sibling library (only until its version is on PyPI)
+        if: steps.library.outputs.published != 'true'
+        uses: actions/checkout@v7
         with:
           repository: tuudik/python-sabatark
           path: python-sabatark
-      - name: Install sibling library fallback
-        if: steps.library.outputs.available == 'false'
-        run: python -m pip install ../python-sabatark
-      - name: Verify library version and install test tooling
-        run: |
-          python - <<'PY'
-          import importlib.metadata
-          import json
-          requirement = json.load(open('custom_components/sabatark/manifest.json'))['requirements'][0]
-          name, version = requirement.split('==')
-          assert importlib.metadata.version(name) == version
-          PY
-          python -m pip install pytest-homeassistant-custom-component==0.13.372 ruff
+          persist-credentials: false
+      - name: Install the sibling library (only until its version is on PyPI)
+        if: steps.library.outputs.published != 'true'
+        run: uv pip install ../python-sabatark
+      - name: Verify the installed library version matches the manifest
+        env:
+          REQUIREMENT: ${{ steps.library.outputs.requirement }}
+        run: test "sabatark==$(python -c 'import importlib.metadata; print(importlib.metadata.version("sabatark"))')" = "$REQUIREMENT"
       - run: python -m pytest -q
       - run: ruff check .
       - run: ruff format --check .
@@ -75,8 +90,10 @@ jobs:
   public-safety:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
       - name: Reject private IPv4 addresses and non-example email addresses

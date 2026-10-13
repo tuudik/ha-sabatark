@@ -21,6 +21,13 @@ Home Assistant requires version 2026.10.0 or later. Release the Python library b
 
 The reusable validation workflow can install the sibling library repository before its first PyPI
 release. The release workflow always requires the exact manifest pin to be available on PyPI first.
+That fallback step is skipped as soon as the manifest's version exists on PyPI.
+
+## Dependency updates
+
+Dependabot checks GitHub Actions and the uv lockfile weekly. When it bumps
+`pytest-homeassistant-custom-component`, keep `homeassistant` in `hacs.json` at or below the Home Assistant
+version that release targets.
 
 ## Offline archive check
 
