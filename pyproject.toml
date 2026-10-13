@@ -11,14 +11,12 @@ dependencies = []
 dev = [
     "pytest-homeassistant-custom-component==0.13.372",
     "ruff",
-    "sabatark",
+    "sabatark==0.1.0",
 ]
 
 [tool.uv]
 package = false
 
-[tool.uv.sources]
-sabatark = { path = "../python-sabatark", editable = true }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
