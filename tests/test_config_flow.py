@@ -143,12 +143,12 @@ async def test_reauth_rejects_other_account(
     assert config_entry.data[CONF_TOKEN] == old_token
 
 
-async def test_placeholder_options_flow(
+async def test_access_options_flow(
     hass: HomeAssistant, controller: FakeController, loaded_entry: MockConfigEntry
 ) -> None:
     result = await hass.config_entries.options.async_init(loaded_entry.entry_id)
-    assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "no_options"
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "init"
 
 
 @pytest.mark.parametrize(

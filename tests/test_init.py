@@ -112,7 +112,13 @@ async def test_devices_are_registered_under_site_hub(
     assert light.name == "Kitchen light"
     assert light.via_device_id == hub.id
     assert light.model == "light"
-    for skipped in (1010, 1011, 1014, 2001):
+    access = registry.async_get_device_by_identifier(
+        (DOMAIN, f"{SITE_ID}_1010"), loaded_entry.entry_id
+    )
+    assert access is not None
+    assert access.model == "access"
+    assert access.via_device_id == hub.id
+    for skipped in (1011, 1014, 2001):
         assert (
             registry.async_get_device_by_identifier(
                 (DOMAIN, f"{SITE_ID}_{skipped}"), loaded_entry.entry_id
