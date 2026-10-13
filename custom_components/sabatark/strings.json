@@ -43,8 +43,51 @@
     }
   },
   "options": {
+    "step": {
+      "init": {
+        "title": "Configure an access device",
+        "description": "Choose a device. Repeat this flow to configure other access devices.",
+        "data": {
+          "device": "Access device"
+        }
+      },
+      "model": {
+        "title": "Choose the entity model",
+        "data": {
+          "model": "Model"
+        }
+      },
+      "buttons": {
+        "title": "Choose pulse outputs",
+        "description": "Each selected output becomes an Open button. The controller resets the output after the pulse.",
+        "data": {
+          "paths": "Output paths"
+        }
+      },
+      "cover": {
+        "title": "Configure the garage cover",
+        "description": "Open, close and toggle all pulse the same output. Choose the device that reports whether the garage is open.",
+        "data": {
+          "path": "Pulse output path",
+          "state_device": "State sensor device"
+        }
+      },
+      "state": {
+        "title": "Choose the opening state",
+        "description": "The selected status must be true when the garage is open, and false when it is closed.",
+        "data": {
+          "state_path": "Opening status path"
+        }
+      }
+    },
+    "error": {
+      "no_paths": "Choose at least one output path."
+    },
     "abort": {
-      "no_options": "This integration has no options yet."
+      "no_options": "This integration has no options yet.",
+      "no_access_devices": "This site has no access devices.",
+      "not_loaded": "Load the integration before configuring access devices.",
+      "no_state_devices": "This site has no device with a boolean state."
     }
   },
   "entity": {
@@ -56,6 +99,17 @@
     "sensor": {
       "status_value": {
         "name": "{key}"
+      }
+    },
+    "button": {
+      "open": {
+        "name": "Open"
+      },
+      "open_secondary": {
+        "name": "Open (secondary)"
+      },
+      "open_output": {
+        "name": "Open ({path})"
       }
     }
   },
@@ -71,6 +125,15 @@
     },
     "write_failed": {
       "message": "The controller rejected the command: {error}"
+    }
+  },
+  "selector": {
+    "access_model": {
+      "options": {
+        "lock": "Lock",
+        "cover": "Garage cover",
+        "buttons": "Pulse buttons"
+      }
     }
   }
 }

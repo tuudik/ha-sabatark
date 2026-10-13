@@ -1,0 +1,117 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration
+
+  pytest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ha-sabatark
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ha-sabatark
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Install the library pin from the manifest when published
+        id: library
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          requirement = json.load(open('custom_components/sabatark/manifest.json'))['requirements'][0]
+          result = subprocess.run([sys.executable, '-m', 'pip', 'install', requirement])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'available={str(result.returncode == 0).lower()}\n')
+          PY
+      - name: Check out sibling library before its first PyPI release
+        if: steps.library.outputs.available == 'false'
+        uses: actions/checkout@v4
+        with:
+          repository: tuudik/python-sabatark
+          path: python-sabatark
+      - name: Install sibling library fallback
+        if: steps.library.outputs.available == 'false'
+        run: python -m pip install ../python-sabatark
+      - name: Verify library version and install test tooling
+        run: |
+          python - <<'PY'
+          import importlib.metadata
+          import json
+          requirement = json.load(open('custom_components/sabatark/manifest.json'))['requirements'][0]
+          name, version = requirement.split('==')
+          assert importlib.metadata.version(name) == version
+          PY
+          python -m pip install pytest-homeassistant-custom-component==0.13.372 ruff
+      - run: python -m pytest -q
+      - run: ruff check .
+      - run: ruff format --check .
+
+  public-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Reject private IPv4 addresses and non-example email addresses
+        run: |
+          python - <<'PY'
+          import ipaddress
+          import pathlib
+          import re
+          import subprocess
+          import sys
+          networks = [ipaddress.ip_network((value, prefix)) for value, prefix in ((0x0A000000, 8), (0xAC100000, 12), (0xC0A80000, 16))]
+          ipv4 = re.compile(r'(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])')
+          email = re.compile(r'[A-Za-z0-9.!#$%&\x27*+/=?^_`{|}~-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)')
+          examples = {'example.com', 'example.net', 'example.org'}
+          failed = False
+          paths = subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0')
+          for name in filter(None, paths):
+              path = pathlib.Path(name)
+              if not path.is_file():
+                  continue
+              payload = path.read_bytes()
+              if b'\0' in payload:
+                  continue
+              for number, line in enumerate(payload.decode('utf-8', errors='replace').splitlines(), 1):
+                  for match in ipv4.finditer(line):
+                      try:
+                          address = ipaddress.ip_address(match.group())
+                      except ValueError:
+                          continue
+                      if any(address in network for network in networks):
+                          print(f'{name}:{number}: private IPv4 address')
+                          failed = True
+                  for match in email.finditer(line):
+                      domain = match.group(1).lower()
+                      if not any(domain == value or domain.endswith('.' + value) for value in examples):
+                          print(f'{name}:{number}: non-example email address')
+                          failed = True
+          sys.exit(int(failed))
+          PY
