@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   hassfest:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -20,14 +20,47 @@ jobs:
       - uses: home-assistant/actions/hassfest@master
 
   hacs:
-    runs-on: ubuntu-latest
+    # HACS cannot read files from a private repository, so this job starts once the repository is public.
+    if: github.event.repository.private == false
+    runs-on: ubuntu-26.04
     steps:
       - uses: hacs/action@main
         with:
           category: integration
 
+  library:
+    runs-on: ubuntu-26.04
+    outputs:
+      requirement: ${{ steps.source.outputs.requirement }}
+      source: ${{ steps.source.outputs.source }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Choose the library source for the manifest's requirement
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          requirement=$(jq -r '.requirements[0]' custom_components/sabatark/manifest.json)
+          version=${requirement#sabatark==}
+          if curl --fail --silent --output /dev/null "https://pypi.org/pypi/sabatark/$version/json"; then
+            source=pypi
+          elif gh api repos/tuudik/python-sabatark --silent 2>/dev/null; then
+            source=sibling
+          else
+            source=none
+            echo "::notice::Skipping pytest: $requirement is not on PyPI and the python-sabatark repository is not public yet"
+          fi
+          {
+            echo "requirement=$requirement"
+            echo "source=$source"
+          } >> "$GITHUB_OUTPUT"
+
   pytest:
-    runs-on: ubuntu-latest
+    needs: library
+    if: needs.library.outputs.source != 'none'
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: ha-sabatark
@@ -50,45 +83,31 @@ jobs:
           print('\n'.join(requirement for requirement in group if requirement != 'sabatark'))
           PY
           uv pip install --requirement "$RUNNER_TEMP/requirements-dev.txt"
-      - name: Look up the manifest's library release on PyPI
-        id: library
-        run: |
-          requirement=$(jq -r '.requirements[0]' custom_components/sabatark/manifest.json)
-          version=${requirement#sabatark==}
-          if curl --fail --silent --show-error --output /dev/null "https://pypi.org/pypi/sabatark/$version/json"; then
-            published=true
-          else
-            published=false
-          fi
-          {
-            echo "requirement=$requirement"
-            echo "published=$published"
-          } >> "$GITHUB_OUTPUT"
       - name: Install the library from PyPI
-        if: steps.library.outputs.published == 'true'
+        if: needs.library.outputs.source == 'pypi'
         env:
-          REQUIREMENT: ${{ steps.library.outputs.requirement }}
+          REQUIREMENT: ${{ needs.library.outputs.requirement }}
         run: uv pip install "$REQUIREMENT"
       - name: Check out the sibling library (only until its version is on PyPI)
-        if: steps.library.outputs.published != 'true'
+        if: needs.library.outputs.source == 'sibling'
         uses: actions/checkout@v7
         with:
           repository: tuudik/python-sabatark
           path: python-sabatark
           persist-credentials: false
       - name: Install the sibling library (only until its version is on PyPI)
-        if: steps.library.outputs.published != 'true'
+        if: needs.library.outputs.source == 'sibling'
         run: uv pip install ../python-sabatark
       - name: Verify the installed library version matches the manifest
         env:
-          REQUIREMENT: ${{ steps.library.outputs.requirement }}
+          REQUIREMENT: ${{ needs.library.outputs.requirement }}
         run: test "sabatark==$(python -c 'import importlib.metadata; print(importlib.metadata.version("sabatark"))')" = "$REQUIREMENT"
       - run: python -m pytest -q
       - run: ruff check .
       - run: ruff format --check .
 
   public-safety:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
         with:
