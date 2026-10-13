@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to the controller",
+        "description": "Enter the controller address and the account you use in its web interface.",
+        "data": {
+          "host": "Controller URL",
+          "email": "[%key:common::config_flow::data::email%]",
+          "password": "[%key:common::config_flow::data::password%]"
+        },
+        "data_description": {
+          "host": "Address of the controller, for example http://192.0.2.10.",
+          "email": "E-mail address of the controller account.",
+          "password": "Password of the controller account. Only a derived login token is stored."
+        }
+      },
+      "site": {
+        "title": "Choose a site",
+        "description": "Each configuration entry covers one site. Add the integration again for other sites.",
+        "data": {
+          "site_id": "Site"
+        }
+      },
+      "reauth_confirm": {
+        "title": "[%key:common::config_flow::title::reauth%]",
+        "description": "The controller rejected the stored login for {email}. Enter the password again.",
+        "data": {
+          "password": "[%key:common::config_flow::data::password%]"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "no_sites": "The account has no sites on this controller.",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "wrong_account": "The password belongs to a different account than the one configured."
+    }
+  },
+  "options": {
+    "abort": {
+      "no_options": "This integration has no options yet."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "input": {
+        "name": "Input"
+      }
+    },
+    "sensor": {
+      "status_value": {
+        "name": "{key}"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "The controller rejected the stored login."
+    },
+    "cannot_connect": {
+      "message": "Cannot connect to the controller: {error}"
+    },
+    "site_not_found": {
+      "message": "The configured site no longer exists on the controller."
+    },
+    "write_failed": {
+      "message": "The controller rejected the command: {error}"
+    }
+  }
+}

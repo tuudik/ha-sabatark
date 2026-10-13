@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to the controller",
+        "description": "Enter the controller address and the account you use in its web interface.",
+        "data": {
+          "host": "Controller URL",
+          "email": "Email",
+          "password": "Password"
+        },
+        "data_description": {
+          "host": "Address of the controller, for example http://192.0.2.10.",
+          "email": "E-mail address of the controller account.",
+          "password": "Password of the controller account. Only a derived login token is stored."
+        }
+      },
+      "site": {
+        "title": "Choose a site",
+        "description": "Each configuration entry covers one site. Add the integration again for other sites.",
+        "data": {
+          "site_id": "Site"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Authentication expired for {name}",
+        "description": "The controller rejected the stored login for {email}. Enter the password again.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured",
+      "no_sites": "The account has no sites on this controller.",
+      "reauth_successful": "Re-authentication was successful",
+      "wrong_account": "The password belongs to a different account than the one configured."
+    }
+  },
+  "options": {
+    "abort": {
+      "no_options": "This integration has no options yet."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "input": {
+        "name": "Input"
+      }
+    },
+    "sensor": {
+      "status_value": {
+        "name": "{key}"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "The controller rejected the stored login."
+    },
+    "cannot_connect": {
+      "message": "Cannot connect to the controller: {error}"
+    },
+    "site_not_found": {
+      "message": "The configured site no longer exists on the controller."
+    },
+    "write_failed": {
+      "message": "The controller rejected the command: {error}"
+    }
+  }
+}
