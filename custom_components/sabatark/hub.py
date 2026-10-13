@@ -69,11 +69,17 @@ class SabatarkHub:
         }
         self.rooms: dict[int, Room] = {room.id: room for room in rooms if room.site_id == site.id}
         self.templates: dict[int, Device] = {device.id: device for device in devices}
-        self.connected = True
+        self._stream_ok = True
+        self._reachable = client.connected is not False
         self.hub_device_id: str | None = None
         self._device_listeners: dict[int, list[DeviceListener]] = {}
         self._gesture_listeners: dict[int, list[GestureListener]] = {}
         self._task: asyncio.Task[None] | None = None
+
+    @property
+    def connected(self) -> bool:
+        """Return whether the controller is reachable and the event stream is healthy."""
+        return self._stream_ok and self._reachable
 
     @property
     def hub_identifier(self) -> str:
@@ -125,6 +131,17 @@ class SabatarkHub:
         if device is None:
             return Controls()
         return parse_controls(device, self.templates)
+
+    @callback
+    def async_handle_connection_change(self, connected: bool) -> None:
+        """Track controller reachability reported by the client."""
+        if self._reachable == connected:
+            return
+        if connected:
+            _LOGGER.info("Connection to the controller restored")
+        else:
+            _LOGGER.warning("Lost connection to the controller")
+        self._set_flags(reachable=connected)
 
     @callback
     def async_subscribe_device(self, device_id: int, listener: DeviceListener) -> CALLBACK_TYPE:
@@ -204,15 +221,22 @@ class SabatarkHub:
             self.templates[device.id] = device
             if device.id in self.devices:
                 self.devices[device.id] = device
-        self.connected = True
+        self._stream_ok = True
         for device_id in list(self._device_listeners):
             self._notify_device(device_id)
 
     @callback
     def _async_set_connected(self, connected: bool) -> None:
-        if self.connected == connected:
+        self._set_flags(stream_ok=connected)
+
+    def _set_flags(self, *, stream_ok: bool | None = None, reachable: bool | None = None) -> None:
+        before = self.connected
+        if stream_ok is not None:
+            self._stream_ok = stream_ok
+        if reachable is not None:
+            self._reachable = reachable
+        if self.connected == before:
             return
-        self.connected = connected
         for device_id in list(self._device_listeners):
             self._notify_device(device_id)
 

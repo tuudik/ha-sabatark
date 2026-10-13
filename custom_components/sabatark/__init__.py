@@ -40,12 +40,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: SabatarkConfigEntry) -> 
             data[CONF_SESSION] = state.to_dict()
         hass.config_entries.async_update_entry(entry, data=data)
 
+    @callback
+    def connection_changed(connected: bool) -> None:
+        hub = getattr(entry, "runtime_data", None)
+        if isinstance(hub, SabatarkHub) and hub.client is client:
+            hub.async_handle_connection_change(connected)
+
     client = AgatarkClient(
         entry.data[CONF_HOST],
         email=entry.data[CONF_EMAIL],
         token=entry.data[CONF_TOKEN],
         session_state=restore_session(dict(entry.data)),
         on_session_change=save_session,
+        on_connection_change=connection_changed,
     )
     try:
         sites = await client.sites()

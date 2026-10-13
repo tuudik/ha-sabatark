@@ -232,6 +232,7 @@ class FakeClient:
         *,
         session_state: SessionState | None = None,
         on_session_change: Any = None,
+        on_connection_change: Any = None,
         **kwargs: Any,
     ) -> None:
         self.base_url = base_url.rstrip("/")
@@ -239,6 +240,8 @@ class FakeClient:
         self.token = token
         self.restored = session_state
         self.on_session_change = on_session_change
+        self.on_connection_change = on_connection_change
+        self.connected: bool | None = None
         self._state = session_state
         self.closed: bool | None = None
         self.logout_on_close: bool | None = None
