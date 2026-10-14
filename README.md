@@ -65,6 +65,39 @@ the opposite way; toggle always sends an impulse.
 Security detectors that report no state and point at the same module input as an access device are skipped, since
 the access device already carries that state.
 
+## Power loss recovery
+
+The controller has a battery and keeps running through a mains cut, but its I/O modules do not. When a module loses
+power its relays switch off, and when power returns the controller reports every output on it as off. Outputs that a
+controller rule drives are switched on again by the controller; plain outputs stay off.
+
+To bring plain outputs back, open the integration options, choose **Restore after power loss** and select the lights
+and switches to restore. The only policy is **Last state before the outage**.
+
+How it works:
+
+- While a selected output's module is online, the integration remembers the output's state and, for dimmers, its
+  brightness. The memory is kept in Home Assistant's storage, so it survives restarts.
+- Changes reported while the module is offline, and for two minutes after it returns, do not change the memory, so
+  the "all off" report after a power cut is not mistaken for a choice.
+- When a module comes back online, the integration waits ten seconds, then switches each selected output on that
+  module whose state differs from the remembered one. Writes are spaced out and each failure is retried once.
+- When Home Assistant starts and a module's uptime is lower than the last one seen, the module restarted while Home
+  Assistant was down, and its outputs are restored the same way.
+- A restart of Home Assistant alone, or a lost connection to the controller, restores nothing.
+
+Each restore fires a `sabatark_outputs_restored` event with the restored and failed device ids, and shows a
+notification listing the outputs. The site hub device has a **Last power loss** diagnostic sensor.
+
+Limits:
+
+- An output is only restored once its state has been remembered, so select it while its module is online.
+- A module that does not report its uptime is only noticed when Home Assistant sees it go offline and come back.
+- An output switched by hand during the ten-second wait may be switched back.
+
+Access devices are never restored: their outputs are impulse relays, and an impulse after a power cut could open a
+gate or a door. They cannot be selected.
+
 ## Limitations
 
 - Blinds, ventilation and the sauna are not supported yet.

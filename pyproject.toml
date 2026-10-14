@@ -1,6 +1,6 @@
 [project]
 name = "ha-sabatark"
-version = "0.1.2"
+version = "0.2.0"
 description = "Home Assistant custom integration for Agatark (EnLife) home automation controllers"
 readme = "README.md"
 license = "MIT"

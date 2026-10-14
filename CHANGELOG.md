@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0] - 2026-10-14
+
+### Added
+- Restore outputs after a power cut. Choose lights and switches under **Restore after power loss** in the
+  integration options. When the I/O module that drives a selected output comes back after losing power, the output
+  is switched back to its last state before the outage, including the brightness of dimmers. Outputs the controller
+  has already set again are left alone. Access devices cannot be selected.
+- Fire the `sabatark_outputs_restored` event and show a notification listing the restored outputs.
+- Add a diagnostic **Last power loss** sensor to the site hub device and include the restore state in diagnostics.
+
+### Changed
+- The integration options open with a menu: configure an access device, or restore after power loss.
+
 ## [0.1.2] - 2026-10-14
 
 ### Added
