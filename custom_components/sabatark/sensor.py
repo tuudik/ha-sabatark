@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -13,16 +14,19 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     LIGHT_LUX,
     PERCENTAGE,
+    EntityCategory,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfRatio,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from sabatark import Device
 
+from .const import DOMAIN
 from .entity import SabatarkEntity
 from .hub import SabatarkConfigEntry, SabatarkHub
 
@@ -130,6 +134,7 @@ async def async_setup_entry(
         for device in hub.devices.values()
         for description in describe(device)
     )
+    async_add_entities([SabatarkLastPowerLossSensor(hub)])
 
 
 class SabatarkSensor(SabatarkEntity, SensorEntity):
@@ -147,3 +152,31 @@ class SabatarkSensor(SabatarkEntity, SensorEntity):
     def native_value(self) -> float | None:
         value = self.device.status.get(self.entity_description.status_key)
         return value if is_number(value) else None
+
+
+class SabatarkLastPowerLossSensor(SensorEntity):
+    """When an I/O module of the site last lost power."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "last_power_loss"
+
+    def __init__(self, hub: SabatarkHub) -> None:
+        self.hub = hub
+        self._attr_unique_id = f"{hub.site_id}_last_power_loss"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, hub.hub_identifier)})
+
+    @property
+    def native_value(self) -> datetime | None:
+        restore = self.hub.restore
+        return restore.last_power_loss if restore is not None else None
+
+    async def async_added_to_hass(self) -> None:
+        if self.hub.restore is not None:
+            self.async_on_remove(self.hub.restore.async_add_listener(self._handle_update))
+
+    @callback
+    def _handle_update(self) -> None:
+        self.async_write_ha_state()

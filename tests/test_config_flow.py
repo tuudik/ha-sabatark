@@ -147,8 +147,13 @@ async def test_access_options_flow(
     hass: HomeAssistant, controller: FakeController, loaded_entry: MockConfigEntry
 ) -> None:
     result = await hass.config_entries.options.async_init(loaded_entry.entry_id)
+    assert result["type"] is FlowResultType.MENU
+    assert result["menu_options"] == ["access", "restore"]
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "access"}
+    )
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "init"
+    assert result["step_id"] == "access"
 
 
 @pytest.mark.parametrize(

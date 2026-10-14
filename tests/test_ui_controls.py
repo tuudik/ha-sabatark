@@ -198,6 +198,9 @@ async def test_options_offer_declared_defaults(
     await _setup(hass, config_entry)
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
     result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "access"}
+    )
+    result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"device": "1106"}
     )
     assert _default(result, "model") == "buttons"

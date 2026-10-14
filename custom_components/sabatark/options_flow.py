@@ -1,4 +1,4 @@
-"""Options for modelling access devices."""
+"""Options for modelling access devices and restoring outputs after a power loss."""
 
 from __future__ import annotations
 
@@ -13,6 +13,14 @@ from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
 from sabatark import Device
 
 from .hub import SabatarkConfigEntry, SabatarkHub
+from .restore import (
+    CONF_DEVICES,
+    CONF_POLICY,
+    CONF_RESTORE,
+    POLICIES,
+    is_restorable,
+    restore_options,
+)
 
 
 def access_options(entry: SabatarkConfigEntry, device_id: int) -> dict[str, Any]:
@@ -58,7 +66,7 @@ def _select(options: list[Any], *, multiple: bool = False) -> SelectSelector:
 
 
 class SabatarkOptionsFlow(OptionsFlowWithReload):
-    """Choose an access device and configure its entity model."""
+    """Configure access device models and power loss recovery."""
 
     def __init__(self) -> None:
         self._options: dict[str, Any] = {}
@@ -66,10 +74,56 @@ class SabatarkOptionsFlow(OptionsFlowWithReload):
         self._access: dict[str, Any] = {}
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Choose the access device to configure."""
-        hub = getattr(self.config_entry, "runtime_data", None)
-        if hub is None:
+        """Choose what to configure."""
+        if getattr(self.config_entry, "runtime_data", None) is None:
             return self.async_abort(reason="not_loaded")
+        return self.async_show_menu(step_id="init", menu_options=["access", "restore"])
+
+    async def async_step_restore(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Choose the outputs restored after a power loss."""
+        hub = self.config_entry.runtime_data
+        devices = [device for device in hub.devices.values() if is_restorable(device)]
+        current = restore_options(self.config_entry)
+        if user_input is not None:
+            options = deepcopy(dict(self.config_entry.options))
+            options[CONF_RESTORE] = {
+                CONF_POLICY: user_input[CONF_POLICY],
+                CONF_DEVICES: sorted(int(device_id) for device_id in user_input[CONF_DEVICES]),
+            }
+            return self.async_create_entry(title="", data=options)
+        known = {device.id for device in devices}
+        return self.async_show_form(
+            step_id="restore",
+            data_schema=probatio.Schema(
+                {
+                    probatio.Required(CONF_POLICY, default=current[CONF_POLICY]): SelectSelector(
+                        SelectSelectorConfig(
+                            options=list(POLICIES), translation_key="restore_policy"
+                        )
+                    ),
+                    probatio.Optional(
+                        CONF_DEVICES,
+                        default=[
+                            str(device_id)
+                            for device_id in current[CONF_DEVICES]
+                            if device_id in known
+                        ],
+                    ): _select(
+                        [
+                            {"value": str(device.id), "label": device.name or device.type}
+                            for device in sorted(devices, key=lambda item: item.name)
+                        ],
+                        multiple=True,
+                    ),
+                }
+            ),
+        )
+
+    async def async_step_access(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Choose the access device to configure."""
+        hub = self.config_entry.runtime_data
         devices = [device for device in hub.devices.values() if device.type == "access"]
         if not devices:
             return self.async_abort(reason="no_access_devices")
@@ -79,7 +133,7 @@ class SabatarkOptionsFlow(OptionsFlowWithReload):
             self._access = deepcopy(access_options(self.config_entry, self._device_id))
             return await self.async_step_model()
         return self.async_show_form(
-            step_id="init",
+            step_id="access",
             data_schema=probatio.Schema(
                 {
                     probatio.Required("device", default=str(devices[0].id)): _select(

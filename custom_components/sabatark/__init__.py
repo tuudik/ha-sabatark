@@ -14,6 +14,7 @@ from sabatark import AgatarkClient, AgatarkError, AuthError, SessionState
 
 from .const import CONF_SESSION, CONF_SITE_ID, CONF_TOKEN, DOMAIN, PLATFORMS
 from .hub import SabatarkConfigEntry, SabatarkHub
+from .restore import RestoreManager, restore_store
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,9 +79,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: SabatarkConfigEntry) -> 
 
     hub = SabatarkHub(hass, entry, client, site, devices, rooms)
     entry.runtime_data = hub
+    hub.restore = RestoreManager(hass, entry, hub)
     entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, hub.async_stop))
+    entry.async_on_unload(
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, hub.restore.async_stop)
+    )
 
     hub.async_register_hub_device()
+    await hub.restore.async_start()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     hub.async_start()
     return True
@@ -90,5 +96,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: SabatarkConfigEntry) ->
     """Unload a config entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        await entry.runtime_data.async_stop()
+        hub = entry.runtime_data
+        if hub.restore is not None:
+            await hub.restore.async_stop()
+        await hub.async_stop()
     return unloaded
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: SabatarkConfigEntry) -> None:
+    """Delete the stored restore memory of a removed entry."""
+    await restore_store(hass, entry).async_remove()

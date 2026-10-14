@@ -62,5 +62,6 @@ async def async_get_config_entry_diagnostics(
                 for device in hub.devices.values()
             ],
             "rooms": [{"id": room.id, "name": room.name} for room in hub.rooms.values()],
+            "restore": hub.restore.diagnostics() if hub.restore is not None else None,
         }
     return async_redact_data(data, TO_REDACT)

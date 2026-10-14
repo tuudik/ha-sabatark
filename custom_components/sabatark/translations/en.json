@@ -45,10 +45,25 @@
   "options": {
     "step": {
       "init": {
+        "title": "Options",
+        "menu_options": {
+          "access": "Configure an access device",
+          "restore": "Restore after power loss"
+        }
+      },
+      "access": {
         "title": "Configure an access device",
         "description": "Choose a device. Repeat this flow to configure other access devices.",
         "data": {
           "device": "Access device"
+        }
+      },
+      "restore": {
+        "title": "Restore after power loss",
+        "description": "When an I/O module loses power its relays switch off. The selected outputs are switched back to their state before the outage once the module is back. Outputs that the controller sets itself are left alone when they already match. Access devices are never restored.",
+        "data": {
+          "policy": "Policy",
+          "devices": "Outputs to restore"
         }
       },
       "model": {
@@ -102,6 +117,9 @@
     "sensor": {
       "status_value": {
         "name": "{key}"
+      },
+      "last_power_loss": {
+        "name": "Last power loss"
       }
     },
     "button": {
@@ -123,6 +141,15 @@
     "cover_state_unknown": {
       "message": "The garage door state is unknown, so an impulse could move it the wrong way. Use toggle instead."
     },
+    "outputs_not_restored": {
+      "message": "These outputs could not be restored:\n{devices}"
+    },
+    "outputs_restored": {
+      "message": "These outputs were switched back after their I/O module lost power:\n{devices}"
+    },
+    "outputs_restored_title": {
+      "message": "Power cut: restored {count} outputs"
+    },
     "site_not_found": {
       "message": "The configured site no longer exists on the controller."
     },
@@ -136,6 +163,11 @@
         "lock": "Lock",
         "cover": "Garage cover",
         "buttons": "Impulse buttons"
+      }
+    },
+    "restore_policy": {
+      "options": {
+        "last_state": "Last state before the outage"
       }
     }
   }

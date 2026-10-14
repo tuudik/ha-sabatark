@@ -45,10 +45,25 @@
   "options": {
     "step": {
       "init": {
+        "title": "Valikud",
+        "menu_options": {
+          "access": "Seadista läbipääsuseade",
+          "restore": "Taasta pärast voolukatkestust"
+        }
+      },
+      "access": {
         "title": "Seadista läbipääsuseade",
         "description": "Vali seade. Teiste läbipääsuseadmete seadistamiseks korda seda voogu.",
         "data": {
           "device": "Läbipääsuseade"
+        }
+      },
+      "restore": {
+        "title": "Taasta pärast voolukatkestust",
+        "description": "Kui sisend-väljundmoodul jääb vooluta, lülituvad selle releed välja. Valitud väljundid lülitatakse pärast mooduli taastumist tagasi katkestuse-eelsesse olekusse. Väljundeid, mida kontroller ise juhib, ei puudutata, kui need juba sobivad. Läbipääsuseadmeid ei taastata kunagi.",
+        "data": {
+          "policy": "Reegel",
+          "devices": "Taastatavad väljundid"
         }
       },
       "model": {
@@ -102,6 +117,9 @@
     "sensor": {
       "status_value": {
         "name": "{key}"
+      },
+      "last_power_loss": {
+        "name": "Viimane voolukatkestus"
       }
     },
     "button": {
@@ -123,6 +141,15 @@
     "cover_state_unknown": {
       "message": "Garaažiukse olek on teadmata, seega võib impulss liigutada ust vales suunas. Kasuta selle asemel lülitamist."
     },
+    "outputs_not_restored": {
+      "message": "Neid väljundeid ei õnnestunud taastada:\n{devices}"
+    },
+    "outputs_restored": {
+      "message": "Need väljundid lülitati tagasi pärast seda, kui nende sisend-väljundmoodul jäi vooluta:\n{devices}"
+    },
+    "outputs_restored_title": {
+      "message": "Voolukatkestus: taastati {count} väljundit"
+    },
     "site_not_found": {
       "message": "Seadistatud objekti kontrolleris enam ei ole."
     },
@@ -136,6 +163,11 @@
         "lock": "Lukk",
         "cover": "Garaažiuks",
         "buttons": "Impulssnupud"
+      }
+    },
+    "restore_policy": {
+      "options": {
+        "last_state": "Viimane olek enne katkestust"
       }
     }
   }

@@ -26,7 +26,10 @@ async def test_options_round_trip(
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
-    assert result["step_id"] == "init"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "access"}
+    )
+    assert result["step_id"] == "access"
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"device": "1010"}
     )
@@ -60,6 +63,9 @@ async def test_options_round_trip(
     assert hass.states.get(entity_id(hass, platform, 1010, key)) is not None
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
     result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "access"}
+    )
+    result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"device": "1010"}
     )
     result = await hass.config_entries.options.async_configure(result["flow_id"], {})
@@ -76,6 +82,9 @@ async def test_no_access_devices(
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "access"}
+    )
     assert result["reason"] == "no_access_devices"
 
 
@@ -92,6 +101,9 @@ async def test_no_state_devices(
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "access"}
+    )
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"device": "1010"}
     )
@@ -111,6 +123,9 @@ async def test_unchanged_options_do_not_reload(
     await hass.async_block_till_done()
     with patch.object(hass.config_entries, "async_reload", new_callable=AsyncMock) as reload:
         result = await hass.config_entries.options.async_init(config_entry.entry_id)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"next_step_id": "access"}
+        )
         result = await hass.config_entries.options.async_configure(
             result["flow_id"], {"device": "1010"}
         )

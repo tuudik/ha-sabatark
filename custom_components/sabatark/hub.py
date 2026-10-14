@@ -6,7 +6,7 @@ import asyncio
 import logging
 from collections.abc import Callable, Iterable, Mapping
 from contextlib import suppress
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
@@ -29,6 +29,9 @@ from sabatark import (
 
 from .const import DOMAIN, MANUFACTURER, RECONNECT_INITIAL, RECONNECT_MAX
 from .controls import Controls, parse_controls
+
+if TYPE_CHECKING:
+    from .restore import RestoreManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -100,6 +103,7 @@ class SabatarkHub:
         self._device_listeners: dict[int, list[DeviceListener]] = {}
         self._gesture_listeners: dict[int, list[GestureListener]] = {}
         self._task: asyncio.Task[None] | None = None
+        self.restore: RestoreManager | None = None
 
     @property
     def connected(self) -> bool:
@@ -206,10 +210,13 @@ class SabatarkHub:
     def async_handle_event(self, event: Event) -> None:
         """Apply one event stream item and notify its listeners."""
         if isinstance(event, EventDelta):
-            device = self.devices.get(event.id)
+            device = self.devices.get(event.id) or self.templates.get(event.id)
             if device is None:
                 return
-            self.devices[event.id] = device.apply(event)
+            updated = device.apply(event)
+            self.templates[event.id] = updated
+            if event.id in self.devices:
+                self.devices[event.id] = updated
             self._notify_device(event.id)
         elif isinstance(event, EventLog):
             for listener in list(self._gesture_listeners.get(event.id, ())):
