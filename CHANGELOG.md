@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.2] - 2026-10-14
+
+### Added
+- Sabatark logo and icon, with dark-theme variants, shown in Home Assistant and in the README.
+
 ## [0.1.1]
 
 - Access devices without stored options now default to impulse buttons, one per declared control. The old default

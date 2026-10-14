@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.png">
+    <img src="docs/images/logo.png" alt="Sabatark" height="96">
+  </picture>
+</p>
+
 # ha-sabatark
 
 Home Assistant custom integration for Agatark (EnLife) home automation controllers. It talks to the controller's
