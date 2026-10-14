@@ -145,13 +145,23 @@ async def test_gate_defaults_to_declared_buttons(
         assert controller.writes[-1] == ("devices", 1106, {"status": {key: False}})
 
 
-async def test_single_button_access_defaults_to_lock(
+async def test_access_without_options_defaults_to_buttons(
     hass: HomeAssistant, controller: FakeController, config_entry: MockConfigEntry
 ) -> None:
     _add(controller, 1108, "access", {"locked": True}, {"i1": [f"status.locked{OPEN_BUTTON}"]})
     await _setup(hass, config_entry)
-    assert hass.states.get(entity_id(hass, "lock", 1108, "lock")).state == "locked"
-    assert hass.states.get(entity_id(hass, "lock", 1010, "lock")).state == "locked"
+    registry = er.async_get(hass)
+    for device_id in (1108, 1010):
+        assert (
+            registry.async_get_entity_id("lock", "sabatark", f"{SITE_ID}_{device_id}_lock") is None
+        )
+        assert (
+            registry.async_get_entity_id("cover", "sabatark", f"{SITE_ID}_{device_id}_cover")
+            is None
+        )
+        button = entity_id(hass, "button", device_id, "button_locked")
+        await hass.services.async_call("button", "press", {ATTR_ENTITY_ID: button}, blocking=True)
+        assert controller.writes[-1] == ("devices", device_id, {"status": {"locked": False}})
 
 
 async def test_stored_access_options_are_authoritative(

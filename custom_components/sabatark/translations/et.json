@@ -1,0 +1,142 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ühenda kontrolleriga",
+        "description": "Sisesta kontrolleri aadress ja konto, mida kasutad selle veebiliideses.",
+        "data": {
+          "host": "Kontrolleri URL",
+          "email": "E-post",
+          "password": "Parool"
+        },
+        "data_description": {
+          "host": "Kontrolleri aadress, näiteks http://192.0.2.10.",
+          "email": "Kontrolleri konto e-posti aadress.",
+          "password": "Kontrolleri konto parool. Salvestatakse ainult sellest tuletatud sisselogimistõend."
+        }
+      },
+      "site": {
+        "title": "Vali objekt",
+        "description": "Iga seadistuskirje hõlmab ühte objekti. Teiste objektide jaoks lisa sidumine uuesti.",
+        "data": {
+          "site_id": "Objekt"
+        }
+      },
+      "reauth_confirm": {
+        "title": "{name} autentimine aegus",
+        "description": "Kontroller lükkas konto {email} salvestatud sisselogimise tagasi. Sisesta parool uuesti.",
+        "data": {
+          "password": "Parool"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Ühendamine ebaõnnestus",
+      "invalid_auth": "Vigane autentimine",
+      "unknown": "Ootamatu viga"
+    },
+    "abort": {
+      "already_configured": "Seade on juba seadistatud",
+      "no_sites": "Kontol pole selles kontrolleris ühtegi objekti.",
+      "reauth_successful": "Uuesti autentimine õnnestus",
+      "wrong_account": "Parool kuulub teisele kontole kui seadistatud konto."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Seadista läbipääsuseade",
+        "description": "Vali seade. Teiste läbipääsuseadmete seadistamiseks korda seda voogu.",
+        "data": {
+          "device": "Läbipääsuseade"
+        }
+      },
+      "model": {
+        "title": "Vali olemi mudel",
+        "data": {
+          "model": "Mudel"
+        }
+      },
+      "buttons": {
+        "title": "Vali impulssväljundid",
+        "description": "Igast valitud väljundist saab nupp „Impulss”. Kontroller lähtestab väljundi pärast impulssi.",
+        "data": {
+          "paths": "Väljundite teed"
+        }
+      },
+      "cover": {
+        "title": "Seadista garaažiuks",
+        "description": "Avamine ja sulgemine saadavad impulsi ainult siis, kui garaaži olek näitab, et uks liigub õiges suunas; lülitamine saadab impulsi alati. Vali seade, mis teatab, kas garaaž on avatud.",
+        "data": {
+          "path": "Impulssväljundi tee",
+          "state_device": "Olekuanduri seade"
+        }
+      },
+      "state": {
+        "title": "Vali avatuse olek",
+        "description": "Valitud olek peab olema tõene, kui garaaž on avatud, ja väär, kui see on suletud.",
+        "data": {
+          "state_path": "Avatuse oleku tee"
+        }
+      }
+    },
+    "error": {
+      "no_paths": "Vali vähemalt üks väljundi tee."
+    },
+    "abort": {
+      "no_options": "Sellel sidumisel pole veel valikuid.",
+      "no_access_devices": "Sellel objektil pole läbipääsuseadmeid.",
+      "not_loaded": "Laadi sidumine enne läbipääsuseadmete seadistamist.",
+      "no_state_devices": "Sellel objektil pole ühtegi tõeväärtusolekuga seadet."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "input": {
+        "name": "Sisend"
+      },
+      "door": {
+        "name": "Uks"
+      }
+    },
+    "sensor": {
+      "status_value": {
+        "name": "{key}"
+      }
+    },
+    "button": {
+      "impulse": {
+        "name": "Impulss"
+      },
+      "impulse_number": {
+        "name": "Impulss {number}"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Kontroller lükkas salvestatud sisselogimise tagasi."
+    },
+    "cannot_connect": {
+      "message": "Kontrolleriga ei saa ühendust: {error}"
+    },
+    "cover_state_unknown": {
+      "message": "Garaažiukse olek on teadmata, seega võib impulss liigutada ust vales suunas. Kasuta selle asemel lülitamist."
+    },
+    "site_not_found": {
+      "message": "Seadistatud objekti kontrolleris enam ei ole."
+    },
+    "write_failed": {
+      "message": "Kontroller lükkas käsu tagasi: {error}"
+    }
+  },
+  "selector": {
+    "access_model": {
+      "options": {
+        "lock": "Lukk",
+        "cover": "Garaažiuks",
+        "buttons": "Impulssnupud"
+      }
+    }
+  }
+}

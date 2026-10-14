@@ -6,10 +6,12 @@ from typing import Any
 
 from homeassistant.components.cover import CoverDeviceClass, CoverEntity, CoverEntityFeature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from sabatark import Device
 
+from .const import DOMAIN
 from .entity import SabatarkEntity
 from .hub import SabatarkConfigEntry, SabatarkHub
 from .options_flow import access_options, status_key
@@ -60,13 +62,26 @@ class SabatarkCover(SabatarkEntity, CoverEntity):
         return not value if isinstance(value, bool) else None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
-        """Pulse the configured output."""
-        await self.hub.async_patch_status(self.device_id, {self._output_key: False})
+        """Pulse the configured output when the cover is closed."""
+        if self._known_closed():
+            await self._async_pulse()
 
     async def async_close_cover(self, **kwargs: Any) -> None:
-        """Pulse the configured output."""
-        await self.hub.async_patch_status(self.device_id, {self._output_key: False})
+        """Pulse the configured output when the cover is open."""
+        if not self._known_closed():
+            await self._async_pulse()
 
     async def async_toggle(self, **kwargs: Any) -> None:
         """Pulse the configured output."""
+        await self._async_pulse()
+
+    def _known_closed(self) -> bool:
+        closed = self.is_closed if self.available else None
+        if closed is None:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN, translation_key="cover_state_unknown"
+            )
+        return closed
+
+    async def _async_pulse(self) -> None:
         await self.hub.async_patch_status(self.device_id, {self._output_key: False})

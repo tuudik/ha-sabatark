@@ -32,7 +32,7 @@ async def test_connection_loss_and_recovery(
 ) -> None:
     client = controller.clients[-1]
     light = entity_id(hass, "light", 1001, "light")
-    lock = entity_id(hass, "lock", 1010, "lock")
+    door = entity_id(hass, "binary_sensor", 1010, "door")
     assert hass.states.get(light).state == STATE_OFF
     caplog.clear()
 
@@ -41,7 +41,7 @@ async def test_connection_loss_and_recovery(
     await hass.async_block_till_done()
     assert not loaded_entry.runtime_data.connected
     assert hass.states.get(light).state == STATE_UNAVAILABLE
-    assert hass.states.get(lock).state == STATE_UNAVAILABLE
+    assert hass.states.get(door).state == STATE_UNAVAILABLE
     assert _messages(caplog, logging.WARNING) == [LOST]
     assert _messages(caplog, logging.INFO) == []
 
@@ -50,7 +50,7 @@ async def test_connection_loss_and_recovery(
     await hass.async_block_till_done()
     assert loaded_entry.runtime_data.connected
     assert hass.states.get(light).state == STATE_OFF
-    assert hass.states.get(lock).state == "locked"
+    assert hass.states.get(door).state == STATE_OFF
     assert _messages(caplog, logging.WARNING) == [LOST]
     assert _messages(caplog, logging.INFO) == [RESTORED]
     assert HOST not in caplog.text

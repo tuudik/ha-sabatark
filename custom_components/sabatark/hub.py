@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from contextlib import suppress
 from typing import Any
 
@@ -45,6 +45,29 @@ def is_logical(device: Device) -> bool:
     )
 
 
+def _conf_inputs(device: Device) -> set[tuple[Any, Any]]:
+    return {
+        (item.get("id"), item.get("path"))
+        for item in device.conf
+        if item.get("mode") == "input" and item.get("id") is not None and item.get("path")
+    }
+
+
+def duplicate_detectors(devices: Iterable[Device]) -> set[int]:
+    """Return status-less detectors whose every input is already an access device's input."""
+    devices = list(devices)
+    access_inputs = set().union(
+        *(_conf_inputs(device) for device in devices if device.type == "access")
+    )
+    duplicates = set()
+    for device in devices:
+        if device.type != "securityDetector" or device.raw.get("status") or not device.conf:
+            continue
+        if all((item.get("id"), item.get("path")) in access_inputs for item in device.conf):
+            duplicates.add(device.id)
+    return duplicates
+
+
 class SabatarkHub:
     """Owns the controller client, the device map of one site and the listener registry."""
 
@@ -62,10 +85,12 @@ class SabatarkHub:
         self.client = client
         self.site = site
         self.site_id = site.id
+        logical = [device for device in devices if device.site_id == site.id and is_logical(device)]
+        duplicates = duplicate_detectors(logical)
+        for device_id in sorted(duplicates):
+            _LOGGER.debug("Skipping detector %s that duplicates an access device input", device_id)
         self.devices: dict[int, Device] = {
-            device.id: device
-            for device in devices
-            if device.site_id == site.id and is_logical(device)
+            device.id: device for device in logical if device.id not in duplicates
         }
         self.rooms: dict[int, Room] = {room.id: room for room in rooms if room.site_id == site.id}
         self.templates: dict[int, Device] = {device.id: device for device in devices}

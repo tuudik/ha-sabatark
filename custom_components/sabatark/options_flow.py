@@ -24,12 +24,9 @@ def access_options(entry: SabatarkConfigEntry, device_id: int) -> dict[str, Any]
 
 
 def access_defaults(hub: SabatarkHub | None, device_id: int) -> dict[str, Any]:
-    """Return the default access model: buttons for 2+ declared buttons, otherwise a lock."""
+    """Return the default access model: one impulse button per declared control."""
     buttons = hub.controls(device_id).buttons if hub is not None else []
-    options: dict[str, Any] = {
-        "model": "buttons" if len(buttons) > 1 else "lock",
-        "paths": buttons or ["status.locked"],
-    }
+    options: dict[str, Any] = {"model": "buttons", "paths": buttons or ["status.locked"]}
     device = hub.devices.get(device_id) if hub is not None else None
     if device is not None and "open" in device.status:
         options.update(state_device=device_id, state_path="status.open")

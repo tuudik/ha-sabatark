@@ -10,8 +10,21 @@ from sabatark import AgatarkError, parse_event
 from .conftest import FakeController, entity_id
 
 
-async def test_default_lock(
-    hass: HomeAssistant, controller: FakeController, loaded_entry: MockConfigEntry
+@pytest.fixture
+async def lock_entry(
+    hass: HomeAssistant, controller: FakeController, config_entry: MockConfigEntry
+) -> MockConfigEntry:
+    """Set up the integration with the access device modelled as a lock."""
+    hass.config_entries.async_update_entry(
+        config_entry, options={"access": {"1010": {"model": "lock"}}}
+    )
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    return config_entry
+
+
+async def test_lock(
+    hass: HomeAssistant, controller: FakeController, lock_entry: MockConfigEntry
 ) -> None:
     target = entity_id(hass, "lock", 1010, "lock")
     assert hass.states.get(target).state == "locked"
@@ -29,7 +42,7 @@ async def test_default_lock(
 
 
 async def test_lock_write_failure(
-    hass: HomeAssistant, controller: FakeController, loaded_entry: MockConfigEntry
+    hass: HomeAssistant, controller: FakeController, lock_entry: MockConfigEntry
 ) -> None:
     controller.write_error = AgatarkError("Synthetic write failure", status=403)
     with pytest.raises(HomeAssistantError, match="Synthetic write failure"):

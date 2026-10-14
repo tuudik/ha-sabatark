@@ -58,15 +58,15 @@
         }
       },
       "buttons": {
-        "title": "Choose pulse outputs",
-        "description": "Each selected output becomes an Open button. The controller resets the output after the pulse.",
+        "title": "Choose impulse outputs",
+        "description": "Each selected output becomes an Impulse button. The controller resets the output after the impulse.",
         "data": {
           "paths": "Output paths"
         }
       },
       "cover": {
         "title": "Configure the garage cover",
-        "description": "Open, close and toggle all pulse the same output. Choose the device that reports whether the garage is open.",
+        "description": "Open and close send an impulse only when the garage state says it will move the right way; toggle always sends one. Choose the device that reports whether the garage is open.",
         "data": {
           "path": "Pulse output path",
           "state_device": "State sensor device"
@@ -94,6 +94,9 @@
     "binary_sensor": {
       "input": {
         "name": "Input"
+      },
+      "door": {
+        "name": "Door"
       }
     },
     "sensor": {
@@ -102,14 +105,11 @@
       }
     },
     "button": {
-      "open": {
-        "name": "Open"
+      "impulse": {
+        "name": "Impulse"
       },
-      "open_secondary": {
-        "name": "Open (secondary)"
-      },
-      "open_output": {
-        "name": "Open ({path})"
+      "impulse_number": {
+        "name": "Impulse {number}"
       }
     }
   },
@@ -119,6 +119,9 @@
     },
     "cannot_connect": {
       "message": "Cannot connect to the controller: {error}"
+    },
+    "cover_state_unknown": {
+      "message": "The garage door state is unknown, so an impulse could move it the wrong way. Use toggle instead."
     },
     "site_not_found": {
       "message": "The configured site no longer exists on the controller."
@@ -132,7 +135,7 @@
       "options": {
         "lock": "Lock",
         "cover": "Garage cover",
-        "buttons": "Pulse buttons"
+        "buttons": "Impulse buttons"
       }
     }
   }

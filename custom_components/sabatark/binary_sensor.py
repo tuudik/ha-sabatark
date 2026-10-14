@@ -16,6 +16,7 @@ from sabatark import Device
 
 from .entity import SabatarkEntity
 from .hub import SabatarkConfigEntry, SabatarkHub
+from .options_flow import access_options
 
 SAFETY_CLASSES: dict[str, BinarySensorDeviceClass] = {
     "fire": BinarySensorDeviceClass.SMOKE,
@@ -103,6 +104,24 @@ async def async_setup_entry(
         SabatarkBinarySensor(hub, device, description)
         for device in hub.devices.values()
         for description in describe(device)
+    )
+    async_add_entities(
+        SabatarkBinarySensor(hub, device, door_description(entry, device))
+        for device in hub.devices.values()
+        if device.type == "access" and "open" in device.status
+    )
+
+
+def door_description(entry: SabatarkConfigEntry, device: Device) -> SabatarkBinarySensorDescription:
+    """Return the door state sensor of an access device, a garage door when it is a cover."""
+    garage = access_options(entry, device.id)["model"] == "cover"
+    return SabatarkBinarySensorDescription(
+        key="door",
+        translation_key="door",
+        device_class=(
+            BinarySensorDeviceClass.GARAGE_DOOR if garage else BinarySensorDeviceClass.DOOR
+        ),
+        status_key="open",
     )
 
 

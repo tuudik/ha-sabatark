@@ -113,11 +113,13 @@ async def test_binary_sensors(
         entity_id(hass, "binary_sensor", 1007, "opening"),
         entity_id(hass, "binary_sensor", 1008, "safety"),
         entity_id(hass, "binary_sensor", 1013, "active"),
+        entity_id(hass, "binary_sensor", 1010, "door"),
     }
     classes = {
         entity_id(hass, "binary_sensor", 1006, "motion"): BinarySensorDeviceClass.MOTION,
         entity_id(hass, "binary_sensor", 1007, "opening"): BinarySensorDeviceClass.DOOR,
         entity_id(hass, "binary_sensor", 1008, "safety"): BinarySensorDeviceClass.SMOKE,
+        entity_id(hass, "binary_sensor", 1010, "door"): BinarySensorDeviceClass.DOOR,
     }
     for target, device_class in classes.items():
         state = hass.states.get(target)
@@ -128,11 +130,13 @@ async def test_binary_sensors(
         parse_event({"id": 1006, "status": {"active": True}}),
         parse_event({"id": 1007, "status": {"open": True}}),
         parse_event({"id": 1005, "status": {"input": True}}),
+        parse_event({"id": 1010, "status": {"open": True}}),
     )
     await hass.async_block_till_done()
     assert hass.states.get(entity_id(hass, "binary_sensor", 1006, "motion")).state == STATE_ON
     assert hass.states.get(entity_id(hass, "binary_sensor", 1007, "opening")).state == STATE_ON
     assert hass.states.get(entity_id(hass, "binary_sensor", 1005, "input")).state == STATE_ON
+    assert hass.states.get(entity_id(hass, "binary_sensor", 1010, "door")).state == STATE_ON
 
 
 async def test_raw_input_disabled_by_default(
