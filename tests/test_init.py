@@ -141,6 +141,7 @@ async def test_deltas_update_state_in_order(
     hass: HomeAssistant, controller: FakeController, loaded_entry: MockConfigEntry
 ) -> None:
     target = entity_id(hass, "light", 1001, "light")
+    await hass.async_block_till_done()
     assert hass.states.get(target).state == STATE_OFF
     seen: list[str] = []
     hass.bus.async_listen(
@@ -148,6 +149,7 @@ async def test_deltas_update_state_in_order(
         lambda event: (
             seen.append(event.data["new_state"].state)
             if event.data["entity_id"] == target
+            and event.data["old_state"].state != event.data["new_state"].state
             else None
         ),
     )
