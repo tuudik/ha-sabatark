@@ -149,6 +149,28 @@ class SabatarkHub:
         )
         self.hub_device_id = hub_device.id
 
+    def provides(self, device_entry: dr.DeviceEntry) -> bool:
+        """Return whether a registry device is the site hub or a device the hub provides."""
+        provided = {self.hub_identifier} | {
+            self.device_identifier(device_id) for device_id in self.devices
+        }
+        return any(
+            domain == DOMAIN and identifier in provided
+            for domain, identifier in device_entry.identifiers
+        )
+
+    @callback
+    def async_remove_stale_devices(self) -> None:
+        """Remove registry devices of this entry that the hub no longer provides."""
+        registry = dr.async_get(self.hass)
+        for device_entry in dr.async_entries_for_config_entry(registry, self.entry.entry_id):
+            if self.provides(device_entry):
+                continue
+            _LOGGER.debug("Removing stale device %s", device_entry.id)
+            registry.async_update_device(
+                device_entry.id, remove_config_entry_id=self.entry.entry_id
+            )
+
     def is_available(self, device_id: int) -> bool:
         """Return whether the hub is connected and the device does not report itself offline."""
         device = self.devices.get(device_id)

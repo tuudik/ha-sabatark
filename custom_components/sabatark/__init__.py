@@ -9,6 +9,7 @@ import aiohttp
 from homeassistant.const import CONF_EMAIL, CONF_HOST, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, ConfigEntryNotReady
+from homeassistant.helpers import device_registry as dr
 
 from sabatark import AgatarkClient, AgatarkError, AuthError, SessionState
 
@@ -86,6 +87,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SabatarkConfigEntry) -> 
     )
 
     hub.async_register_hub_device()
+    hub.async_remove_stale_devices()
     await hub.restore.async_start()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     hub.async_start()
@@ -101,6 +103,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: SabatarkConfigEntry) ->
             await hub.restore.async_stop()
         await hub.async_stop()
     return unloaded
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: SabatarkConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Allow removing a device only when the hub no longer provides it."""
+    hub = getattr(entry, "runtime_data", None)
+    if not isinstance(hub, SabatarkHub):
+        return False
+    return not hub.provides(device_entry)
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: SabatarkConfigEntry) -> None:
