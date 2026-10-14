@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1] - 2026-10-14
+
+### Fixed
+- Devices the integration no longer provides, such as the security detectors skipped since 0.1.1 as duplicates of an
+  access device's input, are removed from the device registry when the integration starts.
+- Such devices can also be deleted from their device page. The site hub and devices still provided by the controller
+  cannot be deleted while the entry is set up.
+
 ## [0.2.0] - 2026-10-14
 
 ### Added
