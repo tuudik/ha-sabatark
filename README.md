@@ -32,12 +32,31 @@ Hardware modules and bus drivers get no entities.
 | Wall switches | `binary_sensor` with the raw input, disabled by default |
 | Temperature, humidity, CO2, illuminance, voltage, current | `sensor` |
 | Other numeric status values | `sensor`, disabled by default |
+| Access devices | impulse `button`s by default, or a `lock` or garage `cover`; door state `binary_sensor` |
 
 On/off and brightness controls follow the controls each device declares in the controller's user interface.
-Access devices with two or more declared open buttons default to pulse buttons, others to a lock; integration options
-override the default.
 
 A device that reports itself offline, or a lost connection to the controller, makes its entities unavailable.
+
+The integration is translated into English and Estonian.
+
+## Access devices
+
+Access devices drive impulse relays: each press sends a short impulse and the controller resets the output. What the
+impulse does depends on the wiring, for example a garage opener input that toggles between opening and closing, or a
+door strike that unlocks for a few seconds. The integration cannot tell which way a door will move.
+
+By default each declared control becomes a button named "Impulse", "Impulse 2" and so on. When the device reports
+`open` from a door contact, a door state binary sensor is added too. Integration options can model a device as a
+lock or as a garage cover instead; stored options always take precedence over the default.
+
+For a garage door, choose **Garage cover** in the integration options and select the status that is true while the
+door is open. The cover then sends an impulse on open only while the door is closed, and on close only while it is
+open. When the state is unknown or unavailable, open and close fail with an error so an impulse never moves the door
+the opposite way; toggle always sends an impulse.
+
+Security detectors that report no state and point at the same module input as an access device are skipped, since
+the access device already carries that state.
 
 ## Limitations
 
