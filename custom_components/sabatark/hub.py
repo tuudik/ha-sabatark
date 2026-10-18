@@ -14,6 +14,7 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.event import async_call_later
 
 from sabatark import (
     AgatarkClient,
@@ -27,7 +28,7 @@ from sabatark import (
     Site,
 )
 
-from .const import DOMAIN, MANUFACTURER, RECONNECT_INITIAL, RECONNECT_MAX
+from .const import DOMAIN, MANUFACTURER, RECONNECT_INITIAL, RECONNECT_MAX, UNAVAILABLE_GRACE
 from .controls import Controls, parse_controls
 
 if TYPE_CHECKING:
@@ -99,6 +100,8 @@ class SabatarkHub:
         self.templates: dict[int, Device] = {device.id: device for device in devices}
         self._stream_ok = True
         self._reachable = client.connected is not False
+        self._available = self._stream_ok and self._reachable
+        self._grace: CALLBACK_TYPE | None = None
         self.hub_device_id: str | None = None
         self._device_listeners: dict[int, list[DeviceListener]] = {}
         self._gesture_listeners: dict[int, list[GestureListener]] = {}
@@ -107,8 +110,8 @@ class SabatarkHub:
 
     @property
     def connected(self) -> bool:
-        """Return whether the controller is reachable and the event stream is healthy."""
-        return self._stream_ok and self._reachable
+        """Return whether entities are available, allowing a grace period after connection loss."""
+        return self._available
 
     @property
     def hub_identifier(self) -> str:
@@ -188,10 +191,6 @@ class SabatarkHub:
         """Track controller reachability reported by the client."""
         if self._reachable == connected:
             return
-        if connected:
-            _LOGGER.info("Connection to the controller restored")
-        else:
-            _LOGGER.warning("Lost connection to the controller")
         self._set_flags(reachable=connected)
 
     @callback
@@ -221,6 +220,7 @@ class SabatarkHub:
 
     async def async_stop(self, *_: Any) -> None:
         """Stop the event stream and close the client without logging out."""
+        self._cancel_grace()
         if self._task is not None:
             self._task.cancel()
             with suppress(asyncio.CancelledError):
@@ -259,7 +259,9 @@ class SabatarkHub:
                     self.async_handle_event(event)
             except AuthError:
                 _LOGGER.warning("Controller rejected the session; reauthentication required")
-                self._async_set_connected(False)
+                self._stream_ok = False
+                self._cancel_grace()
+                self._set_available(False)
                 self.entry.async_start_reauth(self.hass)
                 return
             except (AgatarkError, aiohttp.ClientError, TimeoutError) as err:
@@ -275,7 +277,7 @@ class SabatarkHub:
             self.templates[device.id] = device
             if device.id in self.devices:
                 self.devices[device.id] = device
-        self._stream_ok = True
+        self._set_flags(stream_ok=True)
         for device_id in list(self._device_listeners):
             self._notify_device(device_id)
 
@@ -284,13 +286,36 @@ class SabatarkHub:
         self._set_flags(stream_ok=connected)
 
     def _set_flags(self, *, stream_ok: bool | None = None, reachable: bool | None = None) -> None:
-        before = self.connected
         if stream_ok is not None:
             self._stream_ok = stream_ok
         if reachable is not None:
             self._reachable = reachable
-        if self.connected == before:
+        if self._stream_ok and self._reachable:
+            self._cancel_grace()
+            if not self._available:
+                _LOGGER.info("Connection to the controller restored")
+                self._set_available(True)
+        elif self._available and self._grace is None:
+            _LOGGER.debug(
+                "Controller unreachable; entities stay available for %.0f s", UNAVAILABLE_GRACE
+            )
+            self._grace = async_call_later(self.hass, UNAVAILABLE_GRACE, self._async_grace_expired)
+
+    @callback
+    def _async_grace_expired(self, _now: Any) -> None:
+        self._grace = None
+        if self._stream_ok and self._reachable:
             return
+        _LOGGER.warning("Lost connection to the controller")
+        self._set_available(False)
+
+    def _cancel_grace(self) -> None:
+        if self._grace is not None:
+            self._grace()
+            self._grace = None
+
+    def _set_available(self, available: bool) -> None:
+        self._available = available
         for device_id in list(self._device_listeners):
             self._notify_device(device_id)
 

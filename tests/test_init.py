@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 from sabatark import (
     AgatarkError,
     AuthError,
@@ -18,7 +21,7 @@ from sabatark import (
     parse_event,
 )
 
-from custom_components.sabatark.const import CONF_SESSION, DOMAIN
+from custom_components.sabatark.const import CONF_SESSION, DOMAIN, UNAVAILABLE_GRACE
 
 from .conftest import HOST, OTHER_SITE_ID, SITE_ID, FakeController, entity_id
 
@@ -202,11 +205,18 @@ async def test_device_offline_makes_entities_unavailable(
 
 
 async def test_stream_error_marks_unavailable_and_resyncs(
-    hass: HomeAssistant, controller: FakeController, loaded_entry: MockConfigEntry
+    hass: HomeAssistant,
+    controller: FakeController,
+    loaded_entry: MockConfigEntry,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
     hub = loaded_entry.runtime_data
     controller.read_error = AgatarkError("HTTP 504", status=504)
     await controller.push(UplinkError("HTTP 504", status=504))
+    await hass.async_block_till_done()
+    assert hub.connected
+    freezer.tick(timedelta(seconds=UNAVAILABLE_GRACE + 1))
+    async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert not hub.connected
     assert hass.states.get(entity_id(hass, "light", 1001, "light")).state == STATE_UNAVAILABLE

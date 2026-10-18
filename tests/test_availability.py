@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.const import STATE_OFF, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 from sabatark import UplinkError
+
+from custom_components.sabatark.const import UNAVAILABLE_GRACE
 
 from .conftest import HOST, FakeController, entity_id
 
@@ -24,11 +28,18 @@ def _messages(caplog: pytest.LogCaptureFixture, level: int) -> list[str]:
     ]
 
 
+async def _advance(hass: HomeAssistant, freezer: FrozenDateTimeFactory, seconds: float) -> None:
+    freezer.tick(timedelta(seconds=seconds))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+
 async def test_connection_loss_and_recovery(
     hass: HomeAssistant,
     controller: FakeController,
     loaded_entry: MockConfigEntry,
     caplog: pytest.LogCaptureFixture,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
     client = controller.clients[-1]
     light = entity_id(hass, "light", 1001, "light")
@@ -39,6 +50,11 @@ async def test_connection_loss_and_recovery(
     client.on_connection_change(False)
     client.on_connection_change(False)
     await hass.async_block_till_done()
+    assert loaded_entry.runtime_data.connected
+    assert hass.states.get(light).state == STATE_OFF
+    assert _messages(caplog, logging.WARNING) == []
+
+    await _advance(hass, freezer, UNAVAILABLE_GRACE + 1)
     assert not loaded_entry.runtime_data.connected
     assert hass.states.get(light).state == STATE_UNAVAILABLE
     assert hass.states.get(door).state == STATE_UNAVAILABLE
@@ -57,8 +73,32 @@ async def test_connection_loss_and_recovery(
     assert "session-" not in caplog.text
 
 
+async def test_short_connection_loss_keeps_entities_available(
+    hass: HomeAssistant,
+    controller: FakeController,
+    loaded_entry: MockConfigEntry,
+    caplog: pytest.LogCaptureFixture,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    client = controller.clients[-1]
+    light = entity_id(hass, "light", 1001, "light")
+    caplog.clear()
+
+    client.on_connection_change(False)
+    await _advance(hass, freezer, UNAVAILABLE_GRACE - 5)
+    client.on_connection_change(True)
+    await _advance(hass, freezer, 10)
+    assert loaded_entry.runtime_data.connected
+    assert hass.states.get(light).state == STATE_OFF
+    assert _messages(caplog, logging.WARNING) == []
+    assert _messages(caplog, logging.INFO) == []
+
+
 async def test_reachable_controller_with_failed_stream_stays_unavailable(
-    hass: HomeAssistant, controller: FakeController, loaded_entry: MockConfigEntry
+    hass: HomeAssistant,
+    controller: FakeController,
+    loaded_entry: MockConfigEntry,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
     client = controller.clients[-1]
     light = entity_id(hass, "light", 1001, "light")
@@ -67,7 +107,7 @@ async def test_reachable_controller_with_failed_stream_stays_unavailable(
     await hass.async_block_till_done()
     client.on_connection_change(False)
     client.on_connection_change(True)
-    await hass.async_block_till_done()
+    await _advance(hass, freezer, UNAVAILABLE_GRACE + 1)
     assert not loaded_entry.runtime_data.connected
     assert hass.states.get(light).state == STATE_UNAVAILABLE
 
