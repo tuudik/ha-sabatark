@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2] - 2026-10-18
+
+### Fixed
+- A short loss of connection to the controller no longer makes every entity unavailable at once. Entities stay
+  available for 30 seconds and only become unavailable if the connection is still down after that. Automations that
+  react to state changes no longer see a false change to unavailable during a brief network or controller hiccup.
+
 ## [0.2.1] - 2026-10-14
 
 ### Fixed
